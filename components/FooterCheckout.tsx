@@ -1,7 +1,9 @@
 
 import React from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, AlertCircle } from 'lucide-react';
 import { PaymentMethod, OrderData } from '../types';
+
+const MIN_ORDER_AMOUNT = 10;
 
 interface FooterCheckoutProps {
   subtotal: number;
@@ -40,6 +42,11 @@ export const FooterCheckout: React.FC<FooterCheckoutProps> = ({
             </div>
           </div>
           <div className="flex flex-col items-end">
+            {subtotal < MIN_ORDER_AMOUNT && (
+              <span className="text-[8px] font-black text-red-500 uppercase italic tracking-tight animate-pulse mb-1">
+                Faltan ${(MIN_ORDER_AMOUNT - subtotal).toFixed(2)}
+              </span>
+            )}
             <span className={`${
               isInputFocused ? 'text-xl' : 'text-4xl'
             } font-black text-yellow-400 tracking-tighter transition-all duration-150 drop-shadow-[0_0_15px_rgba(250,204,21,0.3)]`}>
@@ -67,12 +74,23 @@ export const FooterCheckout: React.FC<FooterCheckoutProps> = ({
           </button>
           
           {(!isFormValid && !isInputFocused) && (
-            <div className="flex items-center justify-center gap-2 opacity-40 animate-pulse">
-              <div className="h-[1px] flex-1 bg-zinc-800"></div>
-              <p className="text-[7px] text-zinc-500 font-black uppercase tracking-[0.2em] italic whitespace-nowrap">
-                Completa los campos obligatorios
-              </p>
-              <div className="h-[1px] flex-1 bg-zinc-800"></div>
+            <div className="flex flex-col items-center gap-2 animate-in fade-in duration-300">
+              {subtotal < MIN_ORDER_AMOUNT ? (
+                <div className="flex items-center gap-2 text-red-400 bg-red-500/10 px-4 py-2 rounded-full border border-red-500/20">
+                  <AlertCircle className="w-3 h-3" />
+                  <p className="text-[8px] font-black uppercase tracking-widest italic">
+                    Mínimo requerido: ${MIN_ORDER_AMOUNT}
+                  </p>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center gap-2 opacity-40 animate-pulse w-full">
+                  <div className="h-[1px] flex-1 bg-zinc-800"></div>
+                  <p className="text-[7px] text-zinc-500 font-black uppercase tracking-[0.2em] italic whitespace-nowrap">
+                    Completa los campos obligatorios
+                  </p>
+                  <div className="h-[1px] flex-1 bg-zinc-800"></div>
+                </div>
+              )}
             </div>
           )}
         </div>

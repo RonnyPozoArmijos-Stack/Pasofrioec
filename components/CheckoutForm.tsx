@@ -128,10 +128,10 @@ export const CheckoutForm: React.FC<Props> = ({ formData, setFormData, subtotal,
             </div>
             {formData.mapsLink.length > 0 && !validation.maps && (
               <span className="text-[8px] text-red-400 font-bold uppercase mt-2 px-2 flex items-center gap-1">
-                <AlertCircle className="w-2.5 h-2.5" /> El enlace debe empezar con http...
+                <AlertCircle className="w-2.5 h-2.5" /> Solo se permiten enlaces de Google Maps, Apple Maps o Waze
               </span>
             )}
-            <p className="text-[7px] text-zinc-600 font-bold uppercase mt-2 px-2 leading-tight">TIP: Ve a Google Maps, elige tu ubicación y dale a "Compartir" para copiar el link.</p>
+            <p className="text-[7px] text-zinc-600 font-bold uppercase mt-2 px-2 leading-tight">TIP: Copia el enlace desde Google Maps, Apple Maps o Waze para compartir tu ubicación.</p>
           </div>
 
           <div className="relative scroll-mt-24" id="field-address">

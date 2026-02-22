@@ -13,7 +13,8 @@ import {
   LayoutGrid,
   Check,
   Minus,
-  Plus
+  Plus,
+  AlertCircle
 } from 'lucide-react';
 import { CartItem, OrderData, PaymentMethod, DeliveryTime, Product, PurchaseFormat } from './types';
 import { INITIAL_PRODUCTS, WHATSAPP_NUMBER, LOGO_URL } from './constants';
@@ -21,6 +22,8 @@ import { DesktopBlocker } from './components/DesktopBlocker';
 import { CartItemRow } from './components/CartItemRow';
 import { CheckoutForm } from './components/CheckoutForm';
 import { FooterCheckout } from './components/FooterCheckout';
+
+const MIN_ORDER_AMOUNT = 10;
 
 const App: React.FC = () => {
   const [isMobile, setIsMobile] = useState(true);
@@ -85,7 +88,19 @@ const App: React.FC = () => {
   const validation = useMemo(() => ({
     name: formData.name.trim().length >= 3,
     address: formData.address.trim().length >= 5,
-    maps: formData.mapsLink.trim().includes('http'),
+    maps: (() => {
+      const link = formData.mapsLink.trim().toLowerCase();
+      const allowed = [
+        'google.com/maps', 
+        'maps.google.com', 
+        'goo.gl/maps', 
+        'maps.app.goo.gl', 
+        'maps.apple.com', 
+        'waze.com', 
+        'waze.link'
+      ];
+      return allowed.some(domain => link.includes(domain)) && link.startsWith('http');
+    })(),
     payment: !!formData.paymentMethod,
     bank: formData.paymentMethod !== PaymentMethod.Transferencia || !!formData.selectedBank,
     delivery: !!formData.deliveryTime,
@@ -104,8 +119,9 @@ const App: React.FC = () => {
       
       return selectedTimeInMinutes > nowInMinutes;
     })(),
-    cart: cart.length > 0
-  }), [formData, cart]);
+    cart: cart.length > 0,
+    minOrder: subtotal >= MIN_ORDER_AMOUNT
+  }), [formData, cart, subtotal]);
 
   const isFormValid = useMemo(() => {
     return Object.values(validation).every(v => v);
@@ -401,10 +417,35 @@ const App: React.FC = () => {
                    </div>
                    <div className="pt-8 border-t border-zinc-900 space-y-5">
                       <div className="flex justify-between items-end">
-                        <span className="text-zinc-500 text-xs font-black uppercase italic tracking-tighter">Subtotal</span>
+                        <div className="flex flex-col">
+                          <span className="text-zinc-500 text-xs font-black uppercase italic tracking-tighter">Subtotal</span>
+                          {subtotal < MIN_ORDER_AMOUNT && (
+                            <span className="text-[9px] font-black text-red-500 uppercase italic tracking-tight animate-pulse mt-1">
+                              Te faltan ${(MIN_ORDER_AMOUNT - subtotal).toFixed(2)} para el mínimo
+                            </span>
+                          )}
+                        </div>
                         <span className="text-4xl font-black text-white tracking-tighter">${subtotal.toFixed(2)}</span>
                       </div>
-                      <button onClick={() => setStep('CHECKOUT')} className="w-full bg-white text-black font-black py-5 rounded-[2rem] flex items-center justify-center gap-2 uppercase tracking-tight text-xs shadow-2xl active:scale-[0.98] transition-all">
+
+                      {subtotal < MIN_ORDER_AMOUNT && (
+                        <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-2xl flex items-start gap-3 animate-in fade-in zoom-in duration-300">
+                          <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                          <p className="text-[10px] text-red-400 font-bold uppercase leading-tight">
+                            Pedido mínimo requerido: ${MIN_ORDER_AMOUNT}. Agrega más productos para continuar.
+                          </p>
+                        </div>
+                      )}
+
+                      <button 
+                        disabled={subtotal < MIN_ORDER_AMOUNT}
+                        onClick={() => setStep('CHECKOUT')} 
+                        className={`w-full font-black py-5 rounded-[2rem] flex items-center justify-center gap-2 uppercase tracking-tight text-xs shadow-2xl transition-all ${
+                          subtotal >= MIN_ORDER_AMOUNT 
+                            ? 'bg-white text-black active:scale-[0.98]' 
+                            : 'bg-zinc-900 text-zinc-600 opacity-50 cursor-not-allowed'
+                        }`}
+                      >
                         Continuar <ChevronRight className="w-4 h-4" />
                       </button>
                    </div>
