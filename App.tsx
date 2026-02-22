@@ -226,9 +226,33 @@ const App: React.FC = () => {
     }
 
     const encoded = encodeURIComponent(message);
-    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encoded}`, '_blank');
+    const whatsappUrl = `https://api.whatsapp.com/send?phone=${WHATSAPP_NUMBER}&text=${encoded}`;
     
+    // Mostrar el modal primero
     setShowSuccessModal(true);
+    
+    // Pequeño delay para asegurar que el estado se procese antes del redirect
+    setTimeout(() => {
+      try {
+        // Crear un link temporal para mejor compatibilidad con iOS y navegadores in-app
+        const link = document.createElement('a');
+        link.href = whatsappUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        
+        // En iOS in-app browsers, target="_blank" a veces falla o abre en la misma pestaña
+        // Si después de un momento seguimos aquí, intentamos un redirect directo
+        setTimeout(() => {
+          if (document.body.contains(link)) {
+            document.body.removeChild(link);
+          }
+        }, 500);
+      } catch (e) {
+        window.location.href = whatsappUrl;
+      }
+    }, 500);
   };
 
   const resetApp = () => {
@@ -592,8 +616,8 @@ const App: React.FC = () => {
         )}
 
         {showSuccessModal && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md animate-in fade-in duration-300 p-6">
-            <div className="w-full max-w-[340px] bg-zinc-900 border border-zinc-800 rounded-[3rem] p-10 flex flex-col items-center text-center space-y-6 animate-in zoom-in duration-300 shadow-2xl">
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 p-6 animate-in fade-in duration-300">
+            <div className="w-full max-w-[340px] bg-zinc-900 border border-zinc-800 rounded-[3rem] p-10 flex flex-col items-center text-center space-y-6 animate-in zoom-in duration-300 shadow-2xl opacity-100">
               <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center border border-green-500/30">
                 <Check className="w-10 h-10 text-green-500 stroke-[3px]" />
               </div>
