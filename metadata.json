@@ -1,0 +1,7 @@
+{
+  "name": "PASOFRÍOEC",
+  "description": "Aplicación web móvil para pedidos de cerveza a domicilio con entrega 24/7. Diseño optimizado exclusivamente para celulares con integración de WhatsApp.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
