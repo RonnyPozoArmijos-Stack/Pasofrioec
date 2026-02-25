@@ -42,9 +42,17 @@ export const FooterCheckout: React.FC<FooterCheckoutProps> = ({
             </div>
           </div>
           <div className="flex flex-col items-end">
-            {subtotal < MIN_ORDER_AMOUNT && (
+            {subtotal < MIN_ORDER_AMOUNT ? (
               <span className="text-[8px] font-black text-red-500 uppercase italic tracking-tight animate-pulse mb-1">
                 Faltan ${(MIN_ORDER_AMOUNT - subtotal).toFixed(2)}
+              </span>
+            ) : subtotal < 25 ? (
+              <span className="text-[8px] font-black text-zinc-500 uppercase italic tracking-tight mb-1">
+                Faltan ${(25 - subtotal).toFixed(2)} para Delivery GRATIS
+              </span>
+            ) : (
+              <span className="text-[8px] font-black text-green-500 uppercase italic tracking-tight mb-1">
+                Delivery GRATIS
               </span>
             )}
             <span className={`${

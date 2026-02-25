@@ -14,7 +14,8 @@ import {
   Check,
   Minus,
   Plus,
-  AlertCircle
+  AlertCircle,
+  Search
 } from 'lucide-react';
 import { CartItem, OrderData, PaymentMethod, DeliveryTime, Product, PurchaseFormat } from './types';
 import { INITIAL_PRODUCTS, WHATSAPP_NUMBER, LOGO_URL } from './constants';
@@ -28,6 +29,8 @@ const MIN_ORDER_AMOUNT = 10;
 const App: React.FC = () => {
   const [isMobile, setIsMobile] = useState(true);
   const [activeTab, setActiveTab] = useState<'HOME' | 'CART' | 'CATALOG'>('HOME');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('todos');
   const [step, setStep] = useState<'FLOW' | 'CHECKOUT' | 'SUMMARY'>('FLOW');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [modalQtys, setModalQtys] = useState<Record<string, number>>({});
@@ -71,7 +74,9 @@ const App: React.FC = () => {
         'Cajetilla': 0,
         'Media Cajetilla': 0,
         '1.5 LITROS': 0,
-        '3 LITROS': 0
+        '3 LITROS': 0,
+        'Jaba (12 Unidades)': 0,
+        'Media Jaba (6 Unidades)': 0
       });
     }
   }, [selectedProduct]);
@@ -84,6 +89,30 @@ const App: React.FC = () => {
   const subtotal = useMemo(() => {
     return cart.reduce((acc, item) => acc + item.formatPrice * item.quantity, 0);
   }, [cart]);
+
+  const filteredProducts = useMemo(() => {
+    const query = searchQuery.toLowerCase();
+    if (query.length > 0) {
+      return INITIAL_PRODUCTS.filter(product => 
+        product.name.toLowerCase().includes(query) || 
+        product.category.toLowerCase().includes(query)
+      );
+    }
+    return INITIAL_PRODUCTS.filter(product => 
+      selectedCategory === 'todos' || product.category === selectedCategory
+    );
+  }, [searchQuery, selectedCategory]);
+
+  const categories = [
+    { id: 'todos', label: 'Todos' },
+    { id: 'lata', label: 'Lata' },
+    { id: 'vidrio', label: 'Vidrio' },
+    { id: 'jabas', label: 'Jabas' },
+    { id: 'tragos', label: 'Tragos' },
+    { id: 'cigarrillos', label: 'Cigarrillos' },
+    { id: 'guiti', label: 'Güiti' },
+    { id: 'hielo', label: 'Hielo' }
+  ];
 
   const validation = useMemo(() => ({
     name: formData.name.trim().length >= 3,
@@ -103,6 +132,7 @@ const App: React.FC = () => {
     })(),
     payment: !!formData.paymentMethod,
     bank: formData.paymentMethod !== PaymentMethod.Transferencia || !!formData.selectedBank,
+    cash: formData.paymentMethod !== PaymentMethod.Efectivo || (!!formData.cashAmount && Number(formData.cashAmount) >= subtotal),
     delivery: !!formData.deliveryTime,
     schedule: formData.deliveryTime !== DeliveryTime.SCHEDULED || (() => {
       if (!formData.scheduledDate || !formData.scheduledTime) return false;
@@ -146,6 +176,8 @@ const App: React.FC = () => {
     if (Number(modalQtys['Cajetilla']) > 0) total += Number(modalQtys['Cajetilla']) * selectedProduct.priceSixPack;
     if (Number(modalQtys['Caja 24']) > 0) total += Number(modalQtys['Caja 24']) * selectedProduct.priceCaja24;
     if (Number(modalQtys['Media Cajetilla']) > 0) total += Number(modalQtys['Media Cajetilla']) * (selectedProduct.priceMediaCajetilla || 0);
+    if (Number(modalQtys['Jaba (12 Unidades)']) > 0) total += Number(modalQtys['Jaba (12 Unidades)']) * (selectedProduct.priceJaba12 || 0);
+    if (Number(modalQtys['Media Jaba (6 Unidades)']) > 0) total += Number(modalQtys['Media Jaba (6 Unidades)']) * selectedProduct.priceSixPack;
     if (Number(modalQtys['1.5 LITROS']) > 0) total += Number(modalQtys['1.5 LITROS']) * (selectedProduct.price15L || 0);
     if (Number(modalQtys['3 LITROS']) > 0) total += Number(modalQtys['3 LITROS']) * (selectedProduct.price3L || 0);
     return total;
@@ -165,6 +197,8 @@ const App: React.FC = () => {
           else if (format === 'Six Pack' || format === 'Cajetilla') price = selectedProduct.priceSixPack;
           else if (format === 'Caja 24') price = selectedProduct.priceCaja24;
           else if (format === 'Media Cajetilla') price = selectedProduct.priceMediaCajetilla || 0;
+          else if (format === 'Jaba (12 Unidades)') price = selectedProduct.priceJaba12 || 0;
+          else if (format === 'Media Jaba (6 Unidades)') price = selectedProduct.priceSixPack;
           else if (format === '1.5 LITROS') price = selectedProduct.price15L || 0;
           else if (format === '3 LITROS') price = selectedProduct.price3L || 0;
           
@@ -212,11 +246,22 @@ const App: React.FC = () => {
     
     message += `\nTOTAL A PAGAR: $${subtotal.toFixed(2)}\n`;
     
+    if (subtotal >= 25) {
+      message += `DELIVERY: GRATIS (Solo La Libertad)\n`;
+    }
+    
     if (formData.paymentMethod === PaymentMethod.Transferencia) {
       message += `METODO DE PAGO: Transferencia a ${formData.selectedBank || 'Cualquiera'}\n`;
       message += `IMPORTANTE: Por favor envíe el comprobante de transferencia por este medio.\n`;
     } else {
       message += `METODO DE PAGO: Efectivo contra entrega\n`;
+      if (formData.cashAmount) {
+        const cash = Number(formData.cashAmount);
+        message += `PAGA CON: $${cash.toFixed(2)}\n`;
+        if (cash > subtotal) {
+          message += `CAMBIO: $${(cash - subtotal).toFixed(2)}\n`;
+        }
+      }
     }
 
     if (formData.deliveryTime === DeliveryTime.SCHEDULED) {
@@ -267,6 +312,8 @@ const App: React.FC = () => {
       reference: '',
       mapsLink: '',
       paymentMethod: undefined as unknown as PaymentMethod,
+      selectedBank: undefined,
+      cashAmount: '',
       deliveryTime: undefined as unknown as DeliveryTime,
       scheduledDate: '',
       scheduledTime: ''
@@ -391,24 +438,76 @@ const App: React.FC = () => {
                 <h2 className="text-xl font-black text-white uppercase italic tracking-tighter">Nuestro Inventario</h2>
                 <div className="bg-zinc-900 px-3 py-1 rounded-full border border-zinc-800 text-[7px] font-black uppercase text-zinc-500 tracking-[0.2em]">Premium Stock</div>
               </div>
-              <div className="grid grid-cols-2 gap-3.5">
-                {INITIAL_PRODUCTS.map(product => (
-                  <div key={product.id} onClick={() => setSelectedProduct(product)} className="group bg-zinc-900/20 border border-zinc-800/80 rounded-[2rem] overflow-hidden flex flex-col active:scale-95 transition-all">
-                    <div className="relative aspect-square bg-zinc-950 flex items-center justify-center p-2 overflow-hidden">
-                      <img src={product.image} className="max-w-full max-h-full object-contain grayscale-[0.2] group-hover:grayscale-0 transition-all duration-700 pointer-events-none" alt={product.name} />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60"></div>
-                      <div className="absolute bottom-3 left-3 right-3">
-                        <h4 className="text-white font-black text-[9px] uppercase tracking-tight leading-tight line-clamp-2">{product.name}</h4>
+
+              {/* Search and Filters */}
+              <div className="space-y-4">
+                <div className="relative group">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within:text-yellow-400 transition-colors" />
+                  <input 
+                    type="text" 
+                    placeholder="Buscar producto..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl py-4 pl-12 pr-12 text-xs font-bold text-white placeholder:text-zinc-600 focus:outline-none focus:border-yellow-400/50 focus:bg-zinc-900 transition-all"
+                  />
+                  {searchQuery && (
+                    <button 
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 p-1 bg-zinc-800 rounded-full text-zinc-400 active:scale-90 transition-all"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar -mx-4 px-4">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => setSelectedCategory(cat.id)}
+                      className={`whitespace-nowrap px-5 py-2.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${
+                        selectedCategory === cat.id 
+                          ? 'bg-yellow-400 text-black shadow-lg shadow-yellow-400/20' 
+                          : 'bg-zinc-900 text-zinc-500 border border-zinc-800 hover:border-zinc-700'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {filteredProducts.length > 0 ? (
+                <div className="grid grid-cols-2 gap-3.5">
+                  {filteredProducts.map(product => (
+                    <div key={product.id} onClick={() => setSelectedProduct(product)} className="group bg-zinc-900/20 border border-zinc-800/80 rounded-[2rem] overflow-hidden flex flex-col active:scale-95 transition-all">
+                      <div className="relative aspect-square bg-zinc-950 flex items-center justify-center p-2 overflow-hidden">
+                        <img src={product.image} className="max-w-full max-h-full object-contain grayscale-[0.2] group-hover:grayscale-0 transition-all duration-700 pointer-events-none" alt={product.name} />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60"></div>
+                        <div className="absolute bottom-3 left-3 right-3">
+                          <h4 className="text-white font-black text-[9px] uppercase tracking-tight leading-tight line-clamp-2">{product.name}</h4>
+                        </div>
+                      </div>
+                      <div className="p-2.5">
+                        <button className="w-full py-2 bg-yellow-400 text-black text-[8px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-yellow-400/5">
+                          Ver Detalles
+                        </button>
                       </div>
                     </div>
-                    <div className="p-2.5">
-                      <button className="w-full py-2 bg-yellow-400 text-black text-[8px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-yellow-400/5">
-                        Ver Detalles
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-20 bg-zinc-900/10 rounded-[3rem] border border-dashed border-zinc-800 animate-in fade-in duration-500">
+                  <Search className="w-10 h-10 text-zinc-800 mx-auto mb-4" />
+                  <p className="text-zinc-500 text-[10px] font-black uppercase tracking-widest">No se encontraron productos</p>
+                  <button 
+                    onClick={() => { setSearchQuery(''); setSelectedCategory('todos'); }}
+                    className="mt-6 text-yellow-400 text-[9px] font-black uppercase tracking-widest border-b border-yellow-400/30 pb-1"
+                  >
+                    Limpiar filtros
+                  </button>
+                </div>
+              )}
               <div className="text-center py-4">
                 <p className="text-[8px] text-zinc-600 font-black uppercase tracking-[0.3em] italic">Muy pronto sumaremos nuevas marcas de cervezas</p>
               </div>
@@ -443,9 +542,17 @@ const App: React.FC = () => {
                       <div className="flex justify-between items-end">
                         <div className="flex flex-col">
                           <span className="text-zinc-500 text-xs font-black uppercase italic tracking-tighter">Subtotal</span>
-                          {subtotal < MIN_ORDER_AMOUNT && (
+                          {subtotal < MIN_ORDER_AMOUNT ? (
                             <span className="text-[9px] font-black text-red-500 uppercase italic tracking-tight animate-pulse mt-1">
                               Te faltan ${(MIN_ORDER_AMOUNT - subtotal).toFixed(2)} para el mínimo
+                            </span>
+                          ) : subtotal < 25 ? (
+                            <span className="text-[9px] font-black text-zinc-600 uppercase italic tracking-tight mt-1">
+                              Faltan ${(25 - subtotal).toFixed(2)} para Delivery GRATIS (Solo La Libertad)
+                            </span>
+                          ) : (
+                            <span className="text-[9px] font-black text-green-500 uppercase italic tracking-tight mt-1">
+                              ¡Delivery GRATIS! (Solo La Libertad)
                             </span>
                           )}
                         </div>
@@ -509,12 +616,32 @@ const App: React.FC = () => {
                   <p className="text-white font-bold text-sm leading-tight italic">{formData.name}</p>
                 </div>
                 <div><p className="text-[8px] text-zinc-600 uppercase font-black tracking-widest mb-1.5">Pago:</p><p className="text-yellow-400 font-black text-xs uppercase italic">{formData.paymentMethod === PaymentMethod.Transferencia ? `Transferencia ${formData.selectedBank}` : 'Efectivo'}</p></div>
+                {formData.paymentMethod === PaymentMethod.Efectivo && formData.cashAmount && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-[8px] text-zinc-600 uppercase font-black tracking-widest mb-1.5">Paga con:</p>
+                      <p className="text-white font-black text-xs italic">${Number(formData.cashAmount).toFixed(2)}</p>
+                    </div>
+                    {Number(formData.cashAmount) > subtotal && (
+                      <div>
+                        <p className="text-[8px] text-zinc-600 uppercase font-black tracking-widest mb-1.5">Su Cambio:</p>
+                        <p className="text-green-400 font-black text-xs italic">${(Number(formData.cashAmount) - subtotal).toFixed(2)}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div>
                   <p className="text-[8px] text-zinc-600 uppercase font-black tracking-widest mb-1.5">Entrega:</p>
                   <p className="text-white font-bold text-xs uppercase italic">
                     {formData.deliveryTime === DeliveryTime.SCHEDULED ? `Programado: ${formData.scheduledDate} ${formData.scheduledTime}` : 'Lo antes posible'}
                   </p>
                 </div>
+                {subtotal >= 25 && (
+                  <div>
+                    <p className="text-[8px] text-zinc-600 uppercase font-black tracking-widest mb-1.5">Delivery:</p>
+                    <p className="text-green-400 font-black text-xs uppercase italic">GRATIS (Solo La Libertad)</p>
+                  </div>
+                )}
                 <div className="space-y-2.5 pt-4 border-t border-zinc-800/50">
                   <p className="text-[8px] text-zinc-600 uppercase font-black tracking-widest">Pedido:</p>
                   {cart.map(item => (
@@ -576,7 +703,34 @@ const App: React.FC = () => {
                 <div className="space-y-3 pb-8">
                   {selectedProduct.price > 0 && <FormatCard label="Unidad" price={selectedProduct.price} qty={modalQtys['Unidad'] || 0} onUpdate={(d) => handleModalQtyChange('Unidad', d)} />}
                   {selectedProduct.priceMediaCajetilla && selectedProduct.priceMediaCajetilla > 0 && <FormatCard label="Media Cajetilla" price={selectedProduct.priceMediaCajetilla} qty={modalQtys['Media Cajetilla'] || 0} onUpdate={(d) => handleModalQtyChange('Media Cajetilla', d)} />}
-                  {selectedProduct.priceSixPack > 0 && <FormatCard label={selectedProduct.name.toLowerCase().includes('cigarrillo') ? "Cajetilla" : "Six Pack"} price={selectedProduct.priceSixPack} qty={selectedProduct.name.toLowerCase().includes('cigarrillo') ? (modalQtys['Cajetilla'] || 0) : (modalQtys['Six Pack'] || 0)} onUpdate={(d) => handleModalQtyChange(selectedProduct.name.toLowerCase().includes('cigarrillo') ? 'Cajetilla' : 'Six Pack', d)} />}
+                  {selectedProduct.priceSixPack > 0 && (
+                    <FormatCard 
+                      label={
+                        selectedProduct.name.toLowerCase().includes('cigarrillo') 
+                          ? "Cajetilla" 
+                          : (selectedProduct.name.toLowerCase().includes('jaba') || selectedProduct.name.toLowerCase().includes('java'))
+                            ? "Media Jaba (6 Unidades)"
+                            : "Six Pack"
+                      } 
+                      price={selectedProduct.priceSixPack} 
+                      qty={
+                        selectedProduct.name.toLowerCase().includes('cigarrillo') 
+                          ? (modalQtys['Cajetilla'] || 0) 
+                          : (selectedProduct.name.toLowerCase().includes('jaba') || selectedProduct.name.toLowerCase().includes('java'))
+                            ? (modalQtys['Media Jaba (6 Unidades)'] || 0)
+                            : (modalQtys['Six Pack'] || 0)
+                      } 
+                      onUpdate={(d) => handleModalQtyChange(
+                        selectedProduct.name.toLowerCase().includes('cigarrillo') 
+                          ? 'Cajetilla' 
+                          : (selectedProduct.name.toLowerCase().includes('jaba') || selectedProduct.name.toLowerCase().includes('java'))
+                            ? 'Media Jaba (6 Unidades)'
+                            : 'Six Pack', 
+                        d
+                      )} 
+                    />
+                  )}
+                  {selectedProduct.priceJaba12 && selectedProduct.priceJaba12 > 0 && <FormatCard label="Jaba (12 Unidades)" price={selectedProduct.priceJaba12} qty={modalQtys['Jaba (12 Unidades)'] || 0} onUpdate={(d) => handleModalQtyChange('Jaba (12 Unidades)', d)} />}
                   {selectedProduct.priceCaja24 > 0 && <FormatCard label="Caja de 24" price={selectedProduct.priceCaja24} qty={modalQtys['Caja 24'] || 0} onUpdate={(d) => handleModalQtyChange('Caja 24', d)} />}
                   {selectedProduct.price15L && selectedProduct.price15L > 0 && <FormatCard label="1.5 LITROS" price={selectedProduct.price15L} qty={modalQtys['1.5 LITROS'] || 0} onUpdate={(d) => handleModalQtyChange('1.5 LITROS', d)} />}
                   {selectedProduct.price3L && selectedProduct.price3L > 0 && <FormatCard label="3 LITROS" price={selectedProduct.price3L} qty={modalQtys['3 LITROS'] || 0} onUpdate={(d) => handleModalQtyChange('3 LITROS', d)} />}

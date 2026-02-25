@@ -25,6 +25,7 @@ interface Props {
     maps: boolean;
     payment: boolean;
     bank: boolean;
+    cash: boolean;
     delivery: boolean;
     schedule: boolean;
     cart: boolean;
@@ -188,6 +189,56 @@ export const CheckoutForm: React.FC<Props> = ({ formData, setFormData, subtotal,
             </button>
           </div>
         </div>
+
+        {formData.paymentMethod === PaymentMethod.Efectivo && (
+          <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-400">
+            <div className="bg-zinc-900 border border-zinc-800 rounded-[2rem] p-6 space-y-4 shadow-xl">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="bg-yellow-400/20 p-2 rounded-xl">
+                  <Banknote className="w-5 h-5 text-yellow-400" />
+                </div>
+                <h3 className="text-sm font-black text-white uppercase italic tracking-tight">¿Con cuánto vas a pagar?</h3>
+              </div>
+              
+              <p className="text-[10px] text-zinc-500 font-bold uppercase leading-tight px-1">
+                Ingresa el monto con el que pagarás y calculamos tu cambio.
+              </p>
+
+              <div className="relative">
+                <span className="absolute left-5 top-1/2 -translate-y-1/2 text-yellow-400 font-black text-lg">$</span>
+                <input
+                  type="number"
+                  name="cashAmount"
+                  placeholder="20"
+                  value={formData.cashAmount || ''}
+                  onChange={handleChange}
+                  onBlur={() => handleBlur('cashAmount')}
+                  inputMode="decimal"
+                  className="w-full bg-black border border-zinc-800 rounded-2xl py-5 pl-10 pr-5 text-white text-xl font-black placeholder-zinc-800 focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400/20 transition-all shadow-inner"
+                />
+              </div>
+
+              {formData.cashAmount && Number(formData.cashAmount) > subtotal && (
+                <div className="bg-green-500/10 border border-green-500/30 p-4 rounded-2xl flex items-center justify-between animate-in zoom-in duration-300">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-green-400" />
+                    <span className="text-[10px] font-black text-green-400 uppercase tracking-widest">Tu cambio será:</span>
+                  </div>
+                  <span className="text-lg font-black text-green-400 italic">
+                    ${(Number(formData.cashAmount) - subtotal).toFixed(2)}
+                  </span>
+                </div>
+              )}
+
+              {formData.cashAmount && Number(formData.cashAmount) < subtotal && Number(formData.cashAmount) > 0 && (
+                <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-2xl flex items-center gap-2 animate-in shake duration-300">
+                  <AlertCircle className="w-4 h-4 text-red-400" />
+                  <span className="text-[9px] font-black text-red-400 uppercase tracking-widest">El monto debe ser mayor al total (${subtotal.toFixed(2)})</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {formData.paymentMethod === PaymentMethod.Transferencia && (
           <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-400">
